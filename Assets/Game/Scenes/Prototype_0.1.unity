@@ -375,6 +375,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   terrainsToGenerate: {fileID: 11400000, guid: 85c46e013eb9f9246bb60a21dbdccd47, type: 2}
+  EnemySpawners: []
   numOfTerrains: 6
 --- !u!4 &787389537
 Transform:
@@ -517,6 +518,7 @@ MonoBehaviour:
   playerList: []
   enemiesList: []
   patterPointsList: []
+  gameManager: {fileID: 787389536}
   randomSeed: 0
 --- !u!4 &1566639014
 Transform:

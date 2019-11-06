@@ -34,6 +34,8 @@ MonoBehaviour:
   - DestroyRpc
   - DoJump
   - Flash
+  - GetMeleeWeapon
+  - GetRangedWeapon
   - InstantiateRpc
   - Marco
   - PickupItemInit
@@ -44,7 +46,6 @@ MonoBehaviour:
   - RequestForPickupItems
   - RequestForPickupTimes
   - TaggedPlayer
-  - ChangeWeapon
-  - GetMeleeWeapon
-  - GetRangedWeapon
+  - ArrowStart
+  - ReActivarFlecha
   DisableAutoOpenWizard: 1

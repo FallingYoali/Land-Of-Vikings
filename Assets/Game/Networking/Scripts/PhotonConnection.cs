@@ -40,7 +40,7 @@ public class PhotonConnection : PunBehaviour
     WaitForSeconds timeBeforeSpawing = new WaitForSeconds(3.0f);
     public List<GameObject> patterPointsList;
     //SPAWNERS
-    List<GameObject> spawnPoints;
+    public GameManager gameManager;
 
     ///
     public int randomSeed;
@@ -135,12 +135,13 @@ public class PhotonConnection : PunBehaviour
         enemiesList = new List<GameObject>();
 
 
-        SaveEnemySpawnerPoints();
+        gameManager.CreateSpawnPoints();
         StartCoroutine(SpawnEnemy());
     }
 
     IEnumerator SpawnEnemy()
     {
+
         bool shouldICreateENemy = false;
         shouldICreateENemy = (enemiesList.Count < maxEnemies);
         yield return new WaitForSeconds(3.0f);
@@ -149,9 +150,11 @@ public class PhotonConnection : PunBehaviour
 
         if (shouldICreateENemy)
         {
-            int randSpawn = Random.Range(0, spawnPoints.Count);
-            enemiesList.Add(PhotonNetwork.Instantiate("Enemy", spawnPoints[randSpawn].transform.position, Quaternion.identity, 0) as GameObject);
-            patterPointsList.Add(PhotonNetwork.Instantiate("EnemyPatrollingPoints_1", spawnPoints[randSpawn].transform.position, Quaternion.identity, 0) as GameObject);
+
+
+            int randSpawn = Random.Range(0, gameManager.EnemySpawners.Count);
+            enemiesList.Add(PhotonNetwork.Instantiate("Enemy", gameManager.EnemySpawners[randSpawn].transform.position, Quaternion.identity, 0) as GameObject);
+            patterPointsList.Add(PhotonNetwork.Instantiate("EnemyPatrollingPoints_1", gameManager.EnemySpawners[randSpawn].transform.position, Quaternion.identity, 0) as GameObject);
             for (int i = 0; i < enemiesList.Count; i++)
             {
                 enemiesList[i].GetComponent<EnemyIA>().patternPoint = patterPointsList[i].gameObject.transform;
@@ -159,16 +162,21 @@ public class PhotonConnection : PunBehaviour
         }
         else
         {
+
             //Reciclo un enemigo ya creadoanteriormente
+
+
             for (int i = 0; i < enemiesList.Count; i++)
             {
+
                 if (!enemiesList[i].activeSelf)
                 {
-                    int randSpawn = Random.Range(0, spawnPoints.Count);
+
+                    int randSpawn = Random.Range(0, gameManager.EnemySpawners.Count);
                     enemiesList[i].SetActive(true);
-                    enemiesList[i].transform.position = spawnPoints[randSpawn].transform.position;
-                    randSpawn = Random.Range(0, spawnPoints.Count);
-                    patterPointsList[i].transform.position = spawnPoints[randSpawn].transform.position;
+                    enemiesList[i].transform.position = gameManager.EnemySpawners[randSpawn].transform.position;
+                    randSpawn = Random.Range(0, gameManager.EnemySpawners.Count);
+                    patterPointsList[i].transform.position = gameManager.EnemySpawners[randSpawn].transform.position;
                     break;
                 }
             }
@@ -176,18 +184,6 @@ public class PhotonConnection : PunBehaviour
         StartCoroutine(SpawnEnemy());
         //PhotonView photonView = PhotonView.Get(this);
         //photonView.RPC("CheckPlayersEnemies", PhotonTargets.All,enemiesList,patterPointsList);
-    }
-
-
-
-    void SaveEnemySpawnerPoints()
-    {
-        spawnPoints = new List<GameObject>();
-        foreach (GameObject spawner in GameObject.FindGameObjectsWithTag("Spawner Enemies"))
-        {
-            spawnPoints.Add(spawner);
-        }
-
     }
 
 
@@ -213,14 +209,17 @@ public class PhotonConnection : PunBehaviour
     public override void OnPhotonPlayerDisconnected(PhotonPlayer otherPlayer)
     {
         Debug.Log("Jugador se desconectó:" + otherPlayer.NickName);
-        if (photonView.isMine)
-        {
-            enemiesList.Clear();
-            patterPointsList.Clear();
-            spawnPoints.Clear();
-            StopAllCoroutines();
-        }
+     
+    }
 
+
+    public override void OnLeftRoom()
+    {
+        enemiesList.Clear();
+        patterPointsList.Clear();
+        gameManager.EnemySpawners.Clear();
+        StopAllCoroutines();
+        base.OnLeftRoom();
     }
 
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)

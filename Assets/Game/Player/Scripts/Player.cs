@@ -24,7 +24,7 @@ public class Player : PunBehaviour
     WaitForSeconds proyectile_Timer = new WaitForSeconds(2.0f);
     public Vector3 posicionJugador;
     private bool facingRight = true;
-
+    public int ID;
     public Color[] colors;
     public int enemyCount = 0;
     //melee attack HIT BOX
@@ -50,7 +50,7 @@ public class Player : PunBehaviour
         facingRight = false;
         player_rigidbody = GetComponent<Rigidbody>();
         _myPlayerStats = GetComponent<PlayerStats>();
-
+        ID = this.gameObject.GetComponent<PhotonView>().viewID;
         //hit box is deactivated unless the player hits
         BasicHitBox.GetComponent<MeshRenderer>().enabled = false;
         BasicHitBox.GetComponent<Collider>().enabled = false;
@@ -74,9 +74,17 @@ public class Player : PunBehaviour
                 {
                     if (range_attack_Objects[i].gameObject.name == "Arrow(Clone)")
                     {
-                        range_attack_Objects[i].GetComponent<Transform>().position = position;
-                        range_attack_Objects[i].SetActive(true);
-                        StartCoroutine(MoveProyectile(range_attack_Objects[i]));
+
+                        object[] parameters2 = new object[3];
+
+                        parameters2[2] = position;
+                        parameters2[1] = true;
+                        parameters2[0] = facingRight;
+                        // range_attack_Objects[i].GetComponent<Transform>().position = position;
+                        //range_attack_Objects[i].SetActive(true);
+                        // range_attack_Objects[i].GetComponent<projectile>().moveProjectile(facingRight);
+
+                        range_attack_Objects[i].GetComponent<projectile>().ReactivarFlecha(parameters2);
                         return range_attack_Objects[i];
 
                     }
@@ -85,13 +93,22 @@ public class Player : PunBehaviour
 
             }
         }
-        GameObject go = Instantiate(desired_prefab, position, Quaternion.identity);
-        go.transform.eulerAngles = new Vector3(-90, 90, 0);
+
+        GameObject go = PhotonNetwork.Instantiate(prefab_range_attack.name.ToString(), position, Quaternion.identity, 0);
+        //ESPERAR UN MOMENTO PARA PODER HACER ESTO O HACER UN BULLET MANAGER APARTE QUE SE ENCARGUÉ ESPECIFICAMENTE DE ESTO
+        object[] parameters = new object[3];
+        parameters[2] = ID;
+        parameters[1] = facingRight;
+        parameters[0] = new Vector3(-90, 90, 0);
+        //PhotonNetwork.RPC(go.GetComponent<PhotonView>(), "ArrowStart", PhotonTargets.AllBuffered, false, parameters);
+        go.GetComponent<projectile>().PrepareRPC(parameters);
+        // go.transform.eulerAngles = new Vector3(-90, 90, 0);
+        // go.GetComponent<projectile>().owner = ID;
+        // go.GetComponent<projectile>().moveProjectile(facingRight);
         range_attack_Objects.Add(go);
-        StartCoroutine(MoveProyectile(go));
+        //StartCoroutine(MoveProyectile(go));
         return go;
     }
-
     public IEnumerator MoveProyectile(GameObject proyectile)
     {
         //Mover el disparo y luego desactivarlo para volverse a usar en el futuro
@@ -141,6 +158,27 @@ public class Player : PunBehaviour
         BasicHitBox.GetComponent<MeshRenderer>().enabled = false;
     }
 
+
+
+    void AttackInput()
+    {
+        //Primary Attack
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            StartCoroutine(BasicAttack());
+        }
+
+        //Secondary attack
+        if (Input.GetKeyDown(KeyCode.Q))
+        {
+            if (_myPlayerStats.m_ShootingSpeed >= 1)
+            {
+                _myPlayerStats.m_ShootingSpeed = 0f;
+                SpawnRangeAttackObject(prefab_range_attack, transform.position);
+            }
+
+        }
+    }
 
     void UpdateVariables()
     {
@@ -228,14 +266,53 @@ public class Player : PunBehaviour
         Debug.Log(ranged.stats);
     }
 
+    #region IPunObservable
+
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
     {
         if (stream.isWriting)
         {
-            stream.SendNext(transform.position);
-            stream.SendNext(transform.rotation);
+
+            if (_myPlayerStats == null)
+            {
+                Debug.Log("stats vacio writing");
+            }
+            else
+            {
+                //stream.SendNext(transform.position);
+                stream.SendNext(_myPlayerStats.m_Speed);
+                stream.SendNext(_myPlayerStats.m_Shield);
+                stream.SendNext(_myPlayerStats.m_HP);
+                stream.SendNext(_myPlayerStats.m_ShootingSpeed);
+                stream.SendNext(_myPlayerStats.m_MeeleSpeed);
+                stream.SendNext(_myPlayerStats.m_DamageRange);
+                stream.SendNext(_myPlayerStats.m_DamageMelee);
+            }
+
+        }
+        else
+        {
+            if (_myPlayerStats == null)
+            {
+                Debug.Log("stats vacio");
+            }
+            else
+            {
+                //transform.position = (Vector3)stream.ReceiveNext();
+                _myPlayerStats.m_Speed = (float)stream.ReceiveNext();
+                _myPlayerStats.m_Shield = (float)stream.ReceiveNext();
+                _myPlayerStats.m_HP = (float)stream.ReceiveNext();
+                _myPlayerStats.m_ShootingSpeed = (float)stream.ReceiveNext();
+                _myPlayerStats.m_MeeleSpeed = (float)stream.ReceiveNext();
+                _myPlayerStats.m_DamageRange = (float)stream.ReceiveNext();
+                _myPlayerStats.m_DamageMelee = (float)stream.ReceiveNext();
+
+
+            }
+
         }
     }
+    #endregion
     // Update is called once per frame
 
     public void ChangeWeapon(WeaponType type, WeaponRarity rarity, int seed)
@@ -277,12 +354,15 @@ public class Player : PunBehaviour
         }
     }
 
+
+
     void Update()
     {
         if (photonView.isMine)
         {
             Movement();
             UpdateVariables();
+            AttackInput();
         }
 
     }
